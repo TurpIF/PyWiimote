@@ -3,6 +3,8 @@ PyWiimote
 
 Python code to communicate with a wiimote
 
+This one use bluetooth socket with the L2CAP transport protocol. This protocol is only avilable in GNU/Linux.
+
 ## Requirements
 - [Python 2.7][]
 - [pybluez][]
