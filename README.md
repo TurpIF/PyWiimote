@@ -20,5 +20,5 @@ This one use bluetooth socket with the L2CAP transport protocol. This protocol i
 [Python 2.7]: http://www.python.org/download/releases/2.7
 [pybluez]: https://code.google.com/p/pybluez/
 [Pierre Turpin]: https://github.com/TurpIF
-[Matthieu Falce]: #
+[Matthieu Falce]: https://github.com/ice3
 
