@@ -25,12 +25,15 @@ class Wiimote:
       self._outSocket.close()
       self._connected = False
 
-  def connect(self):
+  def connect(self, timeout=0):
     if self._connected:
       return None
 
     self._inSocket.connect((self._addr, 0x13))
     self._outSocket.connect((self._addr, 0x11))
+
+    self._inSocket.settimeout(timeout)
+    self._outSocket.settimeout(timeout)
 
     # TODO give the choice of the mode to the user
     # Set the mode of the data reporting of the Wiimote with the last byte of this sending
