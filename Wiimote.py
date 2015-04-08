@@ -11,8 +11,13 @@ class Wiimote:
   def __del__(self):
     self.disconnect()
 
-  def _send(self, *data):
-    self._inSocket.send(reduce(lambda x, y: x + chr(y), data, ''))
+  def _send(self, *data, **kwargs):
+    check_connection = True
+    if 'check_connection' in kwargs:
+        check_connection = kwargs['check_connection']
+    if check_connection and not self._connected:
+        raise IOError('No wiimote is connected')
+    self._inSocket.send(''.join(map(chr, data)))
 
   def disconnect(self):
     if self._connected:
@@ -24,7 +29,7 @@ class Wiimote:
     if self._connected:
       return None
 
-    self._inSocket.connect((self._addr, 0x13)
+    self._inSocket.connect((self._addr, 0x13))
     self._outSocket.connect((self._addr, 0x11))
 
     # TODO give the choice of the mode to the user
@@ -39,7 +44,7 @@ class Wiimote:
     # 0x37 : Buttons + Accel + IR sensor (10 bytes) + Extension (6 bytes)
     # 0x3d : Extension (21 bytes)
     # 0x3e / 0x3f : Buttons + Accel + IR sensor (36 bytes). Need two reports for a sigle data unit.
-    self._send(0x52, 0x12, 0x00, 0x33)
+    self._send(0x52, 0x12, 0x00, 0x33, check_connection=False)
 
     # Enable the IR camera
     # Enable IR Camera (Send 0x04 to Output Report 0x13)
@@ -55,98 +60,72 @@ class Wiimote:
     # The mode number is 1 if there is 10 bytes for the IR.
     # The mode number is 3 if there is 12 bytes for the IR.
     # The mode number is 5 if there is 36 bytes for the IR.
-    time.sleep(0.050);self._send(0x52,0x13,0x04)
-    time.sleep(0.050);self._send(0x52,0x1a,0x04)
-    time.sleep(0.050);self._send(0x52,0x16,0x04,0xb0,0x00,0x30,1,0x08,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
-    time.sleep(0.050);self._send(0x52,0x16,0x04,0xb0,0x00,0x06,1,0x90,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
-    time.sleep(0.050);self._send(0x52,0x16,0x04,0xb0,0x00,0x08,1,0x41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
-    time.sleep(0.050);self._send(0x52,0x16,0x04,0xb0,0x00,0x1a,1,0x40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
-    time.sleep(0.050);self._send(0x52,0x16,0x04,0xb0,0x00,0x33,1,0x03,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
-    time.sleep(0.050);self._send(0x52,0x16,0x04,0xb0,0x00,0x30,1,0x08,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+    time.sleep(0.050);self._send(0x52,0x13,0x04, check_connection=False)
+    time.sleep(0.050);self._send(0x52,0x1a,0x04, check_connection=False)
+    time.sleep(0.050);self._send(0x52,0x16,0x04,0xb0,0x00,0x30,1,0x08,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, check_connection=False)
+    time.sleep(0.050);self._send(0x52,0x16,0x04,0xb0,0x00,0x06,1,0x90,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, check_connection=False)
+    time.sleep(0.050);self._send(0x52,0x16,0x04,0xb0,0x00,0x08,1,0x41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, check_connection=False)
+    time.sleep(0.050);self._send(0x52,0x16,0x04,0xb0,0x00,0x1a,1,0x40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, check_connection=False)
+    time.sleep(0.050);self._send(0x52,0x16,0x04,0xb0,0x00,0x33,1,0x03,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, check_connection=False)
+    time.sleep(0.050);self._send(0x52,0x16,0x04,0xb0,0x00,0x30,1,0x08,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, check_connection=False)
 
     self._connected = True
 
   def vibrate(self, duration=1):
-    if not self._connected:
-      return None
     self._send(0x52, 0x15, 0x01)
     time.sleep(duration)
     self._send(0x52, 0x15, 0x00)
 
   def setLed(self, binary):
-    if not self._connected:
-      return None
     self._send(0x52, 0x11, int(n << 4))
 
-  def _getData(self):
-    return [ord(b) for b in self._inSocket.recv(19)]
+  def _getData(self, check_connection=True):
+    if check_connection and not self._connected:
+        raise IOError('No wiimote is connected')
+    data = self._inSocket.recv(19)
+    if len(data) != 19:
+        raise IOError('Impossible to receive all data')
+    return list(map(ord, data))
 
   def _checkButton(self, bit, mask):
     return self._getData()[bit] & mask != 0
 
   def buttonAPressed(self):
-    if not self._connected:
-      return None
     return self._checkButton(3, 0x08)
 
   def buttonBPressed(self):
-    if not self._connected:
-      return None
     return self._checkButton(3, 0x04)
 
   def buttonUpPressed(self):
-    if not self._connected:
-      return None
     return self._checkButton(2, 0x08)
 
   def buttonDownPressed(self):
-    if not self._connected:
-      return None
     return self._checkButton(2, 0x04)
 
   def buttonLeftPressed(self):
-    if not self._connected:
-      return None
     return self._checkButton(2, 0x01)
 
   def buttonRightPressed(self):
-    if not self._connected:
-      return None
     return self._checkButton(2, 0x02)
 
   def buttonPlusPressed(self):
-    if not self._connected:
-      return None
     return self._checkButton(2, 0x10)
 
   def buttonMinusPressed(self):
-    if not self._connected:
-      return None
     return self._checkButton(3, 0x10)
 
   def buttonHomePressed(self):
-    if not self._connected:
-      return None
     return self._checkButton(3, 0x80)
 
   def buttonOnePressed(self):
-    if not self._connected:
-      return None
     return self._checkButton(3, 0x02)
 
   def buttonTwoPressed(self):
-    if not self._connected:
-      return None
     return self._checkButton(3, 0x01)
 
   # 0x80 means no movement
   def getAcceleration(self):
-    if not self._connected:
-      return None
-
     d = self._getData()
-    if len(d) != 19:
-      return None
 
     ax = d[4] << 2 | d[2] & (0x20 | 0x40)
     ay = d[5] << 1 | d[3] & 0x20
@@ -154,12 +133,7 @@ class Wiimote:
     return (ax, ay, az)
 
   def getIRPoints(self):
-    if not self._connected:
-      return None
-
     d = self._getData()
-    if len(d) != 19:
-      return None
 
     x1 = d[7] | ((d[9] & (0b00110000)) << 4)
     y1 = d[8] | ((d[9] & (0b11000000)) << 2)
